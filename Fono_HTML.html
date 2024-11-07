@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mover pelota con la voz</title>
+  <style>
+
+body {
+      overflow: hidden;
+      margin: 0;
+      background-color: #b9eef5;
+    }
+
+    #ball {
+      width: 50px;
+      height: 50px;
+      background-color: blue;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+
+    .obstacle {
+      width: 30px;
+      height: 100px;
+      background-color: red;
+      position: absolute;
+      top: 0;
+      right: -50px;
+    }
+
+    .obstacle2 {
+      width: 30px;
+      height: 100px;
+      background-color: red;
+      position: absolute;
+      top: 0;
+      right: -50px;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="ball" style="position: absolute; left: 100px; top: 180px;"></div>
+  <script>
+    const ball = document.getElementById("ball");
+    let x = (window.innerWidth /3);
+    let y = (window.innerHeight / 2);
+
+    async function initAudio() {
+      try {
+        // Solicitar acceso al micrófono
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new (window.AudioContext || window.webkGitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+
+
+        function moveBall() {
+          analyser.getByteFrequencyData(dataArray);
+
+          // Obtener la frecuencia media
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const averageFrequency = sum / dataArray.length;
+
+          // Mover la pelota en el eje Y según el tono de voz
+          const maxMovement = window.innerHeight -150; // Ajuste del límite de movimiento
+          const yPos = maxMovement - (averageFrequency / 255) * maxMovement;
+
+          ball.style.top = `${yPos}px`;
+
+          requestAnimationFrame(moveBall);
+        }
+
+        moveBall();
+      } catch (error) {
+        console.error("Error al acceder al micrófono:", error);
+      }
+    }
+
+
+
+    //************************************   
+// Función para crear obstáculos
+function createObstacle() {
+      const obstacle = document.createElement("div");
+      const obstacle2 = document.createElement("div");
+      obstacle.classList.add("obstacle");
+      obstacle2.classList.add("obstacle2");
+      // Colocar el obstáculo en una posición aleatoria en el eje Y
+      //public int getRandomNumber(int min, int max){
+        //return(int) ((Math.random()*(max - min)));
+      //}
+
+      obstacle.style.top = `${ (Math.random()*100) + (window.innerHeight/10)+400}px`;//`${Math.random() * (window.innerHeight /102)}px`;
+      document.body.appendChild(obstacle);
+
+      obstacle2.style.top = `${ (Math.random()*100) + (window.innerHeight/10)+120}px`;//`${Math.random() * (window.innerHeight /102)}px`;
+      document.body.appendChild(obstacle2);
+
+
+      // Mover el obstáculo de derecha a izquierda
+      let obstaclePosition = window.innerWidth;
+      const obstacleSpeed = 5;
+
+      function moveObstacle() {
+        obstaclePosition -= obstacleSpeed;
+        obstacle.style.left = `${obstaclePosition}px`;
+        obstacle2.style.left = `${obstaclePosition}px`;
+
+        // Detectar colisión con la pelota
+        if (detectCollision(ball, obstacle)|| detectCollision(ball,obstacle2)) {
+          alert("¡Has chocado con un obstáculo!");
+          resetGame();
+        }
+
+        // Eliminar el obstáculo si sale de la pantalla
+        if (obstaclePosition < -50) {
+          obstacle.remove();
+          obstacle2.remove();
+        } else {
+          requestAnimationFrame(moveObstacle);
+        }
+      }
+      moveObstacle();
+
+}
+
+// Función para detectar colisiones
+function detectCollision(ball, obstacle) {
+      const ballRect = ball.getBoundingClientRect();
+      const obstacleRect = obstacle.getBoundingClientRect();
+
+      return !(
+        ballRect.top > obstacleRect.bottom ||
+        ballRect.bottom < obstacleRect.top ||
+        ballRect.left > obstacleRect.right ||
+        ballRect.right < obstacleRect.left
+      );
+    }
+//***********************************
+
+ // Función para reiniciar el juego
+ function resetGame() {
+      x = window.innerWidth * 0.1;
+      y = window.innerHeight / 2;
+      ball.style.left = `${x}px`;
+      ball.style.top = `${y}px`;
+      // Elimina todos los obstáculos actuales
+      document.querySelectorAll(".obstacle").forEach(obstacle => obstacle.remove());
+    }
+
+    initAudio();
+    // Generar obstáculos cada cierto tiempo
+    setInterval(createObstacle, 2000);
+  </script>
+</body>
+</html>
